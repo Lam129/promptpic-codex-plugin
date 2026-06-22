@@ -1,0 +1,29 @@
+{
+  "name": "promptpic",
+  "version": "0.1.0",
+  "description": "Open PromptPic from Codex and guide canvas-based AI image design workflows.",
+  "author": {
+    "name": "PromptPic"
+  },
+  "homepage": "https://promptpic.ai",
+  "repository": "https://github.com/Lam129/promptpic-codex-plugin",
+  "license": "MIT",
+  "keywords": ["promptpic", "image-generation", "canvas", "design", "codex"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "PromptPic",
+    "shortDescription": "Open PromptPic as a canvas-based AI image studio from Codex.",
+    "longDescription": "PromptPic helps Codex users open the PromptPic web canvas, generate images, use generated images as references, and keep project assets organized in the current workspace.",
+    "developerName": "PromptPic",
+    "category": "Design",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://promptpic.ai",
+    "defaultPrompt": [
+      "Open PromptPic and design a reference image.",
+      "Generate image assets and save them locally.",
+      "Use PromptPic as my canvas design workspace."
+    ],
+    "brandColor": "#0066FF"
+  },
+  "mcpServers": "./.mcp.json"
+}

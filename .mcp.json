@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "promptpic": {
+      "command": "node",
+      "args": ["./mcp/server.mjs"],
+      "env": {
+        "PROMPTPIC_BASE_URL": "https://promptpic.ai"
+      }
+    }
+  }
+}
