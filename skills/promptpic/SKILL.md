@@ -15,10 +15,12 @@ PromptPic is a canvas-based AI image generation workspace. Use it when the user 
 
    `https://promptpic.ai/zh-Hans/chat?source=codex`
 
-4. Ask the user to sign in if PromptPic is not already authenticated.
-5. Use PromptPic's chat panel to generate images.
-6. Use the canvas as the working area for comparison, annotation, remixing, and reference-image selection.
-7. When the user wants local project assets, use `promptpic.download_asset` with the current workspace path.
+4. If authenticated MCP access is needed, use `promptpic.connect_account` and ask the user to create a Codex token at the returned PromptPic URL.
+5. After the token is configured as `PROMPTPIC_CODEX_TOKEN`, use `promptpic.get_account` to confirm the connected PromptPic account.
+6. Use PromptPic's chat panel for interactive generation, or `promptpic.create_image` for direct API generation.
+7. Use `promptpic.get_selection` when the user asks Codex to work from the currently selected canvas image.
+8. Use the canvas as the working area for comparison, annotation, remixing, and reference-image selection.
+9. When the user wants local project assets, use `promptpic.download_asset` with the current workspace path.
 8. Saved assets should appear under:
 
    `promptpic-assets/YYYY-MM-DD/`
@@ -79,13 +81,17 @@ Use the MCP tool `promptpic.download_asset` if available. Use `plugins/promptpic
 Available in the standard plugin v1:
 
 - `promptpic.open_canvas`
+- `promptpic.connect_account`
+- `promptpic.get_account`
+- `promptpic.get_selection`
+- `promptpic.create_image`
+- `promptpic.get_generation`
 - `promptpic.download_asset`
 - `promptpic.asset_manifest`
 - `promptpic.plugin_status`
 
-Planned for an authenticated future version:
+Planned for a later canvas-write version:
 
-- `promptpic.create_image`
 - `promptpic.list_assets`
 - `promptpic.save_canvas_snapshot`
 - `promptpic.export_canvas`

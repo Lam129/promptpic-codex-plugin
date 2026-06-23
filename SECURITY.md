@@ -11,6 +11,15 @@ It must not contain:
 - User data
 - Private deployment configuration
 
-Authentication is handled by the PromptPic web app. This plugin does not store PromptPic session cookies or account credentials.
+Authentication is handled by the PromptPic web app and a scoped PromptPic Codex token.
+This plugin does not store PromptPic session cookies, account passwords, database URLs, R2 credentials, or provider secrets.
+
+Configure only:
+
+```text
+PROMPTPIC_CODEX_TOKEN=ppc_codex_xxx
+```
+
+Do not commit real tokens. Use local Codex/plugin secret configuration instead.
 
 If a secret is accidentally committed, rotate it immediately in the relevant provider dashboard.

@@ -7,6 +7,7 @@ const PROTOCOL_VERSION = '2024-11-05';
 const PLUGIN_VERSION = '0.1.0';
 const DEFAULT_BASE_URL = 'https://promptpic.ai';
 const baseUrl = (process.env.PROMPTPIC_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
+const configuredToken = process.env.PROMPTPIC_CODEX_TOKEN || process.env.PROMPTPIC_TOKEN || '';
 
 let inputBuffer = Buffer.alloc(0);
 
@@ -27,6 +28,120 @@ const tools = [
           type: 'string',
           description: 'PromptPic path to open.',
           default: '/chat',
+        },
+      },
+    },
+  },
+  {
+    name: 'promptpic.connect_account',
+    description: 'Return the PromptPic Codex account connection URL and optionally validate a provided Codex token.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        locale: {
+          type: 'string',
+          enum: ['zh-Hans', 'zh-Hant', 'en'],
+          default: 'zh-Hans',
+        },
+        token: {
+          type: 'string',
+          description: 'Optional PromptPic Codex token to validate for this call.',
+        },
+      },
+    },
+  },
+  {
+    name: 'promptpic.get_account',
+    description: 'Return the PromptPic account connected to the configured Codex token.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        token: {
+          type: 'string',
+          description: 'Optional PromptPic Codex token. Defaults to PROMPTPIC_CODEX_TOKEN.',
+        },
+      },
+    },
+  },
+  {
+    name: 'promptpic.get_selection',
+    description: 'Read the current PromptPic canvas selection for the connected account.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        chatSessionId: {
+          type: 'string',
+          description: 'Optional PromptPic chat session id to read selection from.',
+        },
+        canvasId: {
+          type: 'string',
+          description: 'Optional PromptPic canvas id to read selection from.',
+        },
+        token: {
+          type: 'string',
+          description: 'Optional PromptPic Codex token. Defaults to PROMPTPIC_CODEX_TOKEN.',
+        },
+      },
+    },
+  },
+  {
+    name: 'promptpic.create_image',
+    description: 'Create a PromptPic generation job through the authenticated PromptPic Codex API.',
+    inputSchema: {
+      type: 'object',
+      required: ['prompt', 'modelId'],
+      properties: {
+        prompt: {
+          type: 'string',
+          description: 'Prompt to generate.',
+        },
+        modelId: {
+          type: 'string',
+          description: 'PromptPic model id.',
+        },
+        aspectRatio: {
+          type: 'string',
+          description: 'Aspect ratio, for example 1:1, 3:4, 16:9.',
+        },
+        referenceImageUrls: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional reference image URLs.',
+        },
+        chatSessionId: {
+          type: 'string',
+          description: 'Optional PromptPic chat session id. If provided, the job is appended to that conversation.',
+        },
+        locale: {
+          type: 'string',
+          enum: ['zh-Hans', 'zh-Hant', 'en'],
+          default: 'zh-Hans',
+        },
+        insertIntoCanvas: {
+          type: 'boolean',
+          default: true,
+        },
+        token: {
+          type: 'string',
+          description: 'Optional PromptPic Codex token. Defaults to PROMPTPIC_CODEX_TOKEN.',
+        },
+      },
+    },
+  },
+  {
+    name: 'promptpic.get_generation',
+    description: 'Read a PromptPic generation job status and generated assets through the authenticated Codex API.',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: {
+          type: 'string',
+          description: 'PromptPic generation job id.',
+        },
+        token: {
+          type: 'string',
+          description: 'Optional PromptPic Codex token. Defaults to PROMPTPIC_CODEX_TOKEN.',
         },
       },
     },
@@ -122,6 +237,44 @@ function workspaceRoot(input = {}) {
   return path.resolve(input.workspacePath || process.env.PROMPTPIC_WORKSPACE_DIR || process.cwd());
 }
 
+function authToken(input = {}) {
+  return typeof input.token === 'string' && input.token.length > 0 ? input.token : configuredToken;
+}
+
+async function promptpicApi(pathname, input = {}, init = {}) {
+  const token = authToken(input);
+  if (!token) {
+    throw new Error('Missing PromptPic Codex token. Set PROMPTPIC_CODEX_TOKEN or pass token to the tool.');
+  }
+  const url = new URL(pathname, baseUrl);
+  if (init.searchParams && typeof init.searchParams === 'object') {
+    for (const [key, value] of Object.entries(init.searchParams)) {
+      if (typeof value === 'string' && value.length > 0) url.searchParams.set(key, value);
+    }
+  }
+  const response = await fetch(url, {
+    method: init.method || 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(init.body ? { body: JSON.stringify(init.body) } : {}),
+  });
+  const text = await response.text();
+  let data = null;
+  if (text.length > 0) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { raw: text };
+    }
+  }
+  if (!response.ok) {
+    throw new Error(`PromptPic API failed: ${response.status} ${JSON.stringify(data)}`);
+  }
+  return data;
+}
+
 async function openCanvas(input = {}) {
   const locale = typeof input.locale === 'string' ? input.locale : 'zh-Hans';
   const rawPath = typeof input.path === 'string' ? input.path : '/chat';
@@ -129,6 +282,70 @@ async function openCanvas(input = {}) {
   const url = new URL(`${baseUrl}/${locale}${cleanPath}`);
   url.searchParams.set('source', 'codex');
   return jsonContent({ url: url.toString(), instructions: 'Open this URL in the Codex browser.' });
+}
+
+async function connectAccount(input = {}) {
+  const locale = typeof input.locale === 'string' ? input.locale : 'zh-Hans';
+  const url = new URL(`${baseUrl}/${locale}/codex/connect`);
+  url.searchParams.set('source', 'codex');
+  const token = authToken(input);
+  if (token) {
+    const account = await promptpicApi('/api/codex/account', input);
+    return jsonContent({
+      connected: true,
+      account,
+      instructions: 'The provided PromptPic Codex token is valid.',
+    });
+  }
+  return jsonContent({
+    connected: false,
+    url: url.toString(),
+    tokenEnv: 'PROMPTPIC_CODEX_TOKEN',
+    instructions: 'Open this URL, sign in to PromptPic, create a Codex token, then set it as PROMPTPIC_CODEX_TOKEN for this plugin.',
+  });
+}
+
+async function getAccount(input = {}) {
+  return jsonContent(await promptpicApi('/api/codex/account', input));
+}
+
+async function getSelection(input = {}) {
+  return jsonContent(await promptpicApi('/api/codex/canvas/selection', input, {
+    searchParams: {
+      chatSessionId: input.chatSessionId,
+      canvasId: input.canvasId,
+    },
+  }));
+}
+
+async function createImage(input = {}) {
+  if (typeof input.prompt !== 'string' || input.prompt.trim().length === 0) {
+    throw new Error('promptpic.create_image requires prompt');
+  }
+  if (typeof input.modelId !== 'string' || input.modelId.length === 0) {
+    throw new Error('promptpic.create_image requires modelId');
+  }
+  return jsonContent(await promptpicApi('/api/codex/generations', input, {
+    method: 'POST',
+    body: {
+      prompt: input.prompt,
+      modelId: input.modelId,
+      aspectRatio: input.aspectRatio,
+      referenceImageUrls: Array.isArray(input.referenceImageUrls) ? input.referenceImageUrls : [],
+      chatSessionId: input.chatSessionId,
+      locale: input.locale || 'zh-Hans',
+      insertIntoCanvas: input.insertIntoCanvas !== false,
+    },
+  }));
+}
+
+async function getGeneration(input = {}) {
+  if (typeof input.id !== 'string' || input.id.length === 0) {
+    throw new Error('promptpic.get_generation requires id');
+  }
+  return jsonContent(await promptpicApi('/api/codex/generations', input, {
+    searchParams: { id: input.id },
+  }));
 }
 
 async function downloadAsset(input = {}) {
@@ -194,8 +411,8 @@ async function pluginStatus() {
     baseUrl,
     tools: tools.map((tool) => tool.name),
     auth: {
-      mode: 'web-session',
-      accountLinking: 'planned',
+      mode: configuredToken ? 'codex-token' : 'not-configured',
+      accountLinking: 'token',
     },
   });
 }
@@ -204,6 +421,16 @@ async function callTool(name, input) {
   switch (name) {
     case 'promptpic.open_canvas':
       return openCanvas(input);
+    case 'promptpic.connect_account':
+      return connectAccount(input);
+    case 'promptpic.get_account':
+      return getAccount(input);
+    case 'promptpic.get_selection':
+      return getSelection(input);
+    case 'promptpic.create_image':
+      return createImage(input);
+    case 'promptpic.get_generation':
+      return getGeneration(input);
     case 'promptpic.download_asset':
       return downloadAsset(input);
     case 'promptpic.asset_manifest':
