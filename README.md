@@ -163,19 +163,6 @@ R2 仍然是 PromptPic 的云端主存储，本地文件只是为了方便 Codex
 
 PromptPic 后端只保存 token hash，不保存明文 token。用户可以在后续账号设置页撤销 Codex 授权。
 
-## 和 Cowart 的区别
-
-Cowart 更偏本地无限画布：本地启动服务，本地保存画布和素材。
-
-PromptPic 走远程产品路线：
-
-- 画布打开的是线上 PromptPic。
-- 账号使用 PromptPic 登录体系。
-- 图片资产先进入 PromptPic R2 和数据库。
-- Codex 通过 MCP 工具读取选区、调用 API、下载本地副本。
-
-这更适合 PromptPic 现有的额度、模型路由、资产管理和线上生图链路。
-
 ## 下一阶段
 
 - 支持 Codex 写回画布指定位置。
